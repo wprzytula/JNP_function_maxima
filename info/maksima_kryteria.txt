@@ -1,0 +1,39 @@
+=== Proponowane kryteria oceniania piątego zadania ===
+
+== Cele dydaktyczne ==
+
+Studenci powinni poznać:
+- poziomy odporności na wyjątki;
+- schematy pozwalające zapewnić co najmniej silną odporność na wyjątki;
+- zarządzanie pamięcią z użyciem sprytnych wskaźników;
+- idiom pimpl.
+
+== Ocena automatyczna ==
+
+Jest 6 testów:
+TODO
+
+== Ocena jakości tekstu źródłowego ==
+
+Proponuję zacząć od 4 punktów i odejmować po jednym punkcie za
+(przy czym ocena nie może być ujemna):
+* niezgodność zawartości repozytorium ze specyfikacją;
+* ostrzeżenia wypisywane przez kompilator;
+* brzydki styl;
+* brak lub kiepskie komentarze;
+* nieprzejrzysty kod – sprawdzający nie mógł łatwo zrozumieć, dlaczego
+  poszczególne funkcje mają dobrą odporność na wyjątki;
+* nieprzejrzysty kod – sprawdzający nie mógł łatwo zrozumieć, że na
+  pewno nie cieknie pamięć, ewentualnie, gdzie cieknie pamięć;
+* użycie operatora new w sposób nie dający silnej gwarancji odporności na
+  wyjątki (być może automat to oceni);
+* braki const (być może automat to oceni);
+* braki noexcept;
+* brak header guard (być może automat to oceni);
+* kiepska złożoność czasowa (być może automat to oceni);
+* niedziedziczenie lub niepubliczne dziedziczenie wyjątku po std::exception
+  (być może automat to oceni);
+* niepotrzebne zaśmiecanie globalnej przestrzeni nazw i nieukrycie
+  elementów spoza żądanego interfejsu;
+* zbyt duża ilość tworzonych kopii potencjalnie dużych argumentów
+  i wartości.

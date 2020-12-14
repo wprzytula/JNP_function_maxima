@@ -1,0 +1,76 @@
+Czy operator < może zgłosić wyjątek?
+
+throw
+
+int a, b;
+a < b; // noexcept
+
+int *a, *b;
+a < b; // noexcept
+
+class C;
+C a, b;
+a < b; // Może zgłosić wyjątek.
+
+class C;
+C *a, *b;
+a < b; // noexcept
+
+Gwarancje stanu obiektu:
+brak wyjątków no-throw noexcept
+silna strong
+słaba weak
+brak gwarancji
+
+Jak zapewnić silną gwarancję?
+1. Działamy na kopii obiektu.
+2. Zakładamy, że destruktory są noexcept.
+3. Metody const dają (na ogół) silną gwarancję.
+4. Korzystamy tylko z metod noexcept i zapewniających silną gwarancję.
+
+noexcept
+noexcept -> noexcept
+
+strong
+noexcept -> strong
+
+noexcept
+strong -> weak
+
+strong
+strong -> weak
+
+5. Cofanie operacji
+
+try {
+  strong;
+}
+catch (...) {
+  cofamy operację; // noexcept
+}
+
+erase(iterator); // noexcept
+
+6. Strażnik
+
+class Guard {
+  bool reverse;
+public:
+  Guard(...) : reverse(true) {
+    ...
+  }
+  ~Guard() noexcept {
+    if (reverse) {
+      ...
+    }
+  }
+  void done() noexcept {
+    reverse = false;
+  }
+};
+
+{
+  Guard g(...);
+  modyfikacja obiektu;
+  g.done();
+}
