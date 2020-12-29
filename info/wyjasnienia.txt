@@ -1,6 +1,6 @@
-Czy operator < może zgłosić wyjątek?
+instrukcja throw
 
-throw
+Czy operator < może zgłosić wyjątek?
 
 int a, b;
 a < b; // noexcept
@@ -23,6 +23,7 @@ słaba weak
 brak gwarancji
 
 Jak zapewnić silną gwarancję?
+
 1. Działamy na kopii obiektu.
 2. Zakładamy, że destruktory są noexcept.
 3. Metody const dają (na ogół) silną gwarancję.
@@ -42,13 +43,17 @@ strong -> weak
 
 5. Cofanie operacji
 
+wyszukiwanie; // const
+strong1;
 try {
-  strong;
+  strong2;
 }
 catch (...) {
-  cofamy operację; // noexcept
+  cofamy operację strong1; // noexcept
+  throw;
 }
 
+Na przykład cofanie operacji za pomocą
 erase(iterator); // noexcept
 
 6. Strażnik
@@ -74,3 +79,12 @@ public:
   modyfikacja obiektu;
   g.done();
 }
+
+7. Użycie operatora new w sposób nie dający silnej gwarancji
+
+class C {
+public:
+  C(void *); // Może zgłosić wyjątek.
+};
+
+C c(new A); // Brak jakiejkolwiek gwarancji.
