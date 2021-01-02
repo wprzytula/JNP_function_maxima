@@ -57,6 +57,23 @@ public:
         }
     };
 
+    //TOREAD
+    //Ogólnie chyba stosowanie mapy zamiast setu znacząco ułatwi nam zadanie
+    //wtedy wystarczy zrobić:
+    //  using point_type = pair<A, V>;
+    //  using arg() = first; //lub czegoś podobnego, to chyba nie zadziała przez ()
+    //  using value = second;
+    //* to odziedziczy operator porównania z pair
+    //* wszystkie iteratory zadziałąja dobrze, bo takie rzeczy trzyma mapa
+    //* wszystkie funkcje zmiany i dostepu beda natychmiast dziedziczone z mapy
+    // tymsamym rozwiazuje problem pod TOCHECK
+
+    template<typename T>
+    bool same(const T& a, const T& b){
+        return !(a < b) && !(b < a);
+    }
+
+
     using function_set = std::set<point_type, std::less<point_type>>;
 
     struct maxima_order {
@@ -67,33 +84,42 @@ public:
 
     using maxima_set = std::set<point_type, maxima_order>;
 
-    class InvalidArg : std::exception {};
+    class InvalidArg : std::exception {
+        virtual const char* what() const throw(){
+            return "invalid argument value"; 
+        }
+    };
 
     // Konstruktor bezparametrowy (tworzy funkcję o pustej dziedzinie),
     //  konstruktor kopiujący i operator=. Dwa ostatnie powinny mieć
     //  sensowne działanie.
-    FunctionMaxima() = default;
-    FunctionMaxima(const FunctionMaxima&) = default;
-    FunctionMaxima(FunctionMaxima&&) noexcept = default;
-    FunctionMaxima& operator=(const FunctionMaxima&) = default;
-    FunctionMaxima& operator=(FunctionMaxima&&) noexcept = default;
+
+    //Proponuje by funkcje kopiujące dzieliły fun i maxima,
+    //a będziemy kopiować te rzeczy jak któryś coś w nich zmieni
+    FunctionMaxima() = default; //TODO
+    FunctionMaxima(const FunctionMaxima&) = default; //TODO
+    FunctionMaxima(FunctionMaxima&&) noexcept = default; //TODO
+    FunctionMaxima& operator=(const FunctionMaxima&) = default; //TODO
+    FunctionMaxima& operator=(FunctionMaxima&&) noexcept = default; //TODO
 
     // Zwraca wartość w punkcie a, rzuca wyjątek InvalidArg, jeśli a nie
     // należy do dziedziny funkcji. Złożoność najwyżej O(log n).
-    V const& value_at(A const& a) const {
+    V const& value_at(A const& a) const { //TODO 
+        
+        V temp; 
 
     }
 
     // Zmienia funkcję tak, żeby zachodziło f(a) = v. Jeśli a nie należy do
     // obecnej dziedziny funkcji, jest do niej dodawany. Najwyżej O(log n).
-    void set_value(A const& a, V const& v) {
-
+    void set_value(A const& a, V const& v) { //TODO (pamietać o aktualizowaniu maxima)
+        //zrobić kopie w zależności of counta na share_prt
     }
 
     // Usuwa a z dziedziny funkcji. Jeśli a nie należało do dziedziny funkcji,
     // nie dzieje się nic. Złożoność najwyżej O(log n).
-    void erase(A const& a) {
-
+    void erase(A const& a) { //TODO (pamietać o aktualizowaniu maxima)
+        //zrobić kopie w zależności of counta na share_prt
     }
 
 //    Typ iterator zachowujący się tak jak bidirectional_iterator
@@ -116,7 +142,10 @@ public:
     // Iterator, który wskazuje na punkt funkcji o argumencie a lub end(),
     // jeśli takiego argumentu nie ma w dziedzinie funkcji.
     iterator find(A const& a) const noexcept {
-        return fun.find(a);
+        return fun.find(a); //to chyba nie działa, bo fun zapieroa point_type, a szukasz A
+        //najłatwiej byłoby chyba zrobić point (a, cokolwiek) np. //TOCHECK
+        V temp;
+        return fun.find(point_type(a, temp));
     }
 
     // Typ mx_iterator zachowujący się znów jak bidirectional_iterator,
