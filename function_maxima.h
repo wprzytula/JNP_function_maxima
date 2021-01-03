@@ -68,9 +68,9 @@ public:
 
     using function_set = std::set<point_type, std::less<point_type>>;
 
-    struct maxima_order { // TODO: czy możemy używać operatora > ?
+    struct maxima_order {
         bool operator()(const point_type& x, const point_type& y) const {
-            return *x.value() > *y.value() || (!(*y.value() < *x.value()) && *x.arg() < *y.arg());
+            return *y.value() < *x.value() || (!(*y.value() < *x.value()) && *x.arg() < *y.arg());
         }
     };
 
@@ -165,7 +165,7 @@ public:
         //mx_iterator in_maxima = maxima.find(point_type{a_ptr, std::shared_ptr<V>{}});
         //bool was_maximum = in_maxima != maxima.end();
         //old_value = *here;
-        auto new_value = point_type{a_ptr, v_ptr};
+        point_type new_value {a_ptr, v_ptr};
         
         if (found)
             *here = new_value;
@@ -199,16 +199,32 @@ public:
     // Usuwa a z dziedziny funkcji. Jeśli a nie należało do dziedziny funkcji,
     // nie dzieje się nic. Złożoność najwyżej O(log n).
     void erase(A const& a) {
-        iterator it = find(a);
-        if (it != end()) {
-            mx_iterator mx_it = maxima.find(*it);
+        iterator to_erase = find(a);
+        if (to_erase != end()) {
+            mx_iterator left_mx = nullptr, right_mx = nullptr;
+            mx_iterator mx_it = maxima.find(*to_erase);
             try {
-                if (mx_it != mx_end())
-                    maxima.erase(mx_it);
-                fun.erase(it);
+                if (to_erase != begin()) {
+                    iterator left = std::prev(to_erase);
+                    if (is_maximum(left, to_erase))
+                        left_mx = maxima.insert(*left);
+                }
+                iterator right = std::next(to_erase);
+                if (right != end()) {
+                    if (is_maximum(right, to_erase))
+                        right_mx = maxima.insert(*right);
+                }
             } catch (...) {
-
+                if (left_mx != nullptr) {
+                    maxima.erase(left_mx);
+                    if (right_mx != nullptr)
+                        maxima.erase(right_mx);
+                }
+                throw;
             }
+            if (mx_it != mx_end())
+                maxima.erase(mx_it);
+            fun.erase(to_erase);
         }
     }
 private:
@@ -252,7 +268,7 @@ private:
     bool left_check(iterator it, iterator to_erase) {
         if (it == fun.begin())
             return true;
-        iterator left = it; --left;
+        iterator left = std::prev(it);
         if (left == to_erase) {
             if (left == fun.begin())
                 return true;
@@ -262,7 +278,7 @@ private:
         return !(it->value() < left->value()); //możliwy wyjątek w <
     }
     bool right_check(iterator it, iterator to_erase) {
-        iterator right = it; ++right;
+        iterator right = std::next(it);
         if (right == fun.end())
             return true;
         if (right == to_erase) {
