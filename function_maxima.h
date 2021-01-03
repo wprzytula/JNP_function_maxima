@@ -195,10 +195,21 @@ public:
             
     }
 
+    // TODO
     // Usuwa a z dziedziny funkcji. Jeśli a nie należało do dziedziny funkcji,
     // nie dzieje się nic. Złożoność najwyżej O(log n).
     void erase(A const& a) {
+        iterator it = find(a);
+        if (it != end()) {
+            mx_iterator mx_it = maxima.find(*it);
+            try {
+                if (mx_it != mx_end())
+                    maxima.erase(mx_it);
+                fun.erase(it);
+            } catch (...) {
 
+            }
+        }
     }
 private:
     function_set fun;
