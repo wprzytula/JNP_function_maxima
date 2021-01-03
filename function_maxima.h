@@ -97,10 +97,78 @@ public:
             return it->value();
     }
 
+    //Pomocnicze funkcje, określające czy
+    //w danym miejscu jest maximum lokalne
+    private bool left_check(iterator it){
+        if(it == fun.begin()) return true;
+        iterator left = it; --left;
+        return !(it->value() < left->value()); //możliwy wyjątek w >
+    }
+    private bool right_check(iterator it){
+        if(it == fun.end()) return true;
+        iterator right = it; ++rightt;
+        return !(it->value() < right->value()); //możliwy wyjątek w >
+    }
+
+    private bool maximum_check(iterator it){
+        return left_check(it) && right_check(it); //dziedziczy wyjatki
+    }
+
+    //może miotać wyjątkami na prawo i lewo
+    private void set_maximum(iterator it){
+        if(maximum_check(it)){
+            here = maxima.find(*it);
+            if(here == maxima.end())
+                maxima.insert(*it);
+            else
+                *here = *it;
+        }
+        else
+            maxima.erase(*it);
+    }
+
     // Zmienia funkcję tak, żeby zachodziło f(a) = v. Jeśli a nie należy do
     // obecnej dziedziny funkcji, jest do niej dodawany. Najwyżej O(log n).
     void set_value(A const& a, V const& v) {
+        function_set fun_save = fun;
+        maxima_set maxima_save = maxima;
 
+        std::shared_ptr<A> a_ptr = std::make_shared<A>(static_cast<A>(a));
+        std::shared_ptr<V> v_ptr = std::make_shared<V>(static_cast<V>(v));
+        
+        iterator here = fun.find(point_type{a_ptr, std::shared_ptr<V>{}});
+        bool found = here != fun.end();
+        //mx_iterator in_maxima = maxima.find(point_type{a_ptr, std::shared_ptr<V>{}});
+        //bool was_maximum = in_maxima != maxima.end();
+        //old_value = *here;
+        new_value = point_type{a_prt, v_prt};
+        
+        if(found)
+            *here = new_value;
+        else 
+            here = fun.insert(new_value);
+
+        try{
+            set_maximum(here);
+
+            if(here != fun.begin()){
+                iterator left = here;
+                --left;
+                set_maximum(left);
+            }
+
+            if(here != fun.end()){
+                iterator right = here;
+                ++here;
+                set_maximum(right);
+            }
+        }
+        catch(...){
+            fun = fun_save;
+            maxima = maxima_save;
+            throw;
+        }
+            
     }
 
     // Usuwa a z dziedziny funkcji. Jeśli a nie należało do dziedziny funkcji,
