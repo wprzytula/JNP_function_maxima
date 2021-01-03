@@ -1,9 +1,6 @@
 #ifndef MAKSIMA_FUNCTION_MAXIMA_H
 #define MAKSIMA_FUNCTION_MAXIMA_H
 
-//#include <type_traits>
-#include <iostream>
-
 //Zakładamy, że
 //        * klasy A i V mają konstruktory kopiujące;
 //* dostępne są:
@@ -24,8 +21,6 @@
 //będąca kopią innej funkcji współdzieliła z nią argumenty i wartości.
 //* Wycieki pamięci są zabronione. :)
 //* Klasa InvalidArg powinna dziedziczyć po std::exception.
-
-
 
 #include <utility>
 #include <set>
@@ -80,104 +75,7 @@ public:
 
     using maxima_set = std::set<point_type, maxima_order>;
 
-    // Konstruktor bezparametrowy (tworzy funkcję o pustej dziedzinie),
-    //  konstruktor kopiujący i operator=. Dwa ostatnie powinny mieć
-    //  sensowne działanie.
-    FunctionMaxima() = default;
-    FunctionMaxima(const FunctionMaxima&) = default;
-    FunctionMaxima& operator=(const FunctionMaxima&) = default;
-
-    // Zwraca wartość w punkcie a, rzuca wyjątek InvalidArg, jeśli a nie
-    // należy do dziedziny funkcji. Złożoność najwyżej O(log n).
-    V const& value_at(A const& a) const {
-        iterator it = find(a);
-        if (it == fun.end())
-            throw InvalidArg();
-        else
-            return it->value();
-    }
-
-    //Pomocnicze funkcje, określające czy
-    //w danym miejscu jest maximum lokalne
-    private bool left_check(iterator it){
-        if(it == fun.begin()) return true;
-        iterator left = it; --left;
-        return !(it->value() < left->value()); //możliwy wyjątek w >
-    }
-    private bool right_check(iterator it){
-        if(it == fun.end()) return true;
-        iterator right = it; ++rightt;
-        return !(it->value() < right->value()); //możliwy wyjątek w >
-    }
-
-    private bool maximum_check(iterator it){
-        return left_check(it) && right_check(it); //dziedziczy wyjatki
-    }
-
-    //może miotać wyjątkami na prawo i lewo
-    private void set_maximum(iterator it){
-        if(maximum_check(it)){
-            here = maxima.find(*it);
-            if(here == maxima.end())
-                maxima.insert(*it);
-            else
-                *here = *it;
-        }
-        else
-            maxima.erase(*it);
-    }
-
-    // Zmienia funkcję tak, żeby zachodziło f(a) = v. Jeśli a nie należy do
-    // obecnej dziedziny funkcji, jest do niej dodawany. Najwyżej O(log n).
-    void set_value(A const& a, V const& v) {
-        function_set fun_save = fun;
-        maxima_set maxima_save = maxima;
-
-        std::shared_ptr<A> a_ptr = std::make_shared<A>(static_cast<A>(a));
-        std::shared_ptr<V> v_ptr = std::make_shared<V>(static_cast<V>(v));
-        
-        iterator here = fun.find(point_type{a_ptr, std::shared_ptr<V>{}});
-        bool found = here != fun.end();
-        //mx_iterator in_maxima = maxima.find(point_type{a_ptr, std::shared_ptr<V>{}});
-        //bool was_maximum = in_maxima != maxima.end();
-        //old_value = *here;
-        new_value = point_type{a_prt, v_prt};
-        
-        if(found)
-            *here = new_value;
-        else 
-            here = fun.insert(new_value);
-
-        try{
-            set_maximum(here);
-
-            if(here != fun.begin()){
-                iterator left = here;
-                --left;
-                set_maximum(left);
-            }
-
-            if(here != fun.end()){
-                iterator right = here;
-                ++here;
-                set_maximum(right);
-            }
-        }
-        catch(...){
-            fun = fun_save;
-            maxima = maxima_save;
-            throw;
-        }
-            
-    }
-
-    // Usuwa a z dziedziny funkcji. Jeśli a nie należało do dziedziny funkcji,
-    // nie dzieje się nic. Złożoność najwyżej O(log n).
-    void erase(A const& a) {
-
-    }
-
-//    Typ iterator zachowujący się tak jak bidirectional_iterator
+    //    Typ iterator zachowujący się tak jak bidirectional_iterator
 //    (http://www.cplusplus.com/reference/iterator/BidirectionalIterator),
 //            iterujący po punktach funkcji.
 //    Dla zmiennej it typu wyrażenie *it powinno być typu point_type const&.
@@ -234,8 +132,105 @@ public:
     size_type size() const noexcept {
         return fun.size();
     }
+
+    // Konstruktor bezparametrowy (tworzy funkcję o pustej dziedzinie),
+    //  konstruktor kopiujący i operator=. Dwa ostatnie powinny mieć
+    //  sensowne działanie.
+    FunctionMaxima() = default;
+    FunctionMaxima(const FunctionMaxima&) = default;
+    FunctionMaxima& operator=(const FunctionMaxima&) = default;
+
+    // Zwraca wartość w punkcie a, rzuca wyjątek InvalidArg, jeśli a nie
+    // należy do dziedziny funkcji. Złożoność najwyżej O(log n).
+    V const& value_at(A const& a) const {
+        iterator it = find(a);
+        if (it == fun.end())
+            throw InvalidArg();
+        else
+            return it->value();
+    }
+
+    // Zmienia funkcję tak, żeby zachodziło f(a) = v. Jeśli a nie należy do
+    // obecnej dziedziny funkcji, jest do niej dodawany. Najwyżej O(log n).
+    void set_value(A const& a, V const& v) {
+        function_set fun_save = fun;
+        maxima_set maxima_save = maxima;
+
+        std::shared_ptr<A> a_ptr = std::make_shared<A>(static_cast<A>(a));
+        std::shared_ptr<V> v_ptr = std::make_shared<V>(static_cast<V>(v));
+        
+        iterator here = fun.find(point_type{a_ptr, std::shared_ptr<V>{}});
+        bool found = here != fun.end();
+        //mx_iterator in_maxima = maxima.find(point_type{a_ptr, std::shared_ptr<V>{}});
+        //bool was_maximum = in_maxima != maxima.end();
+        //old_value = *here;
+        auto new_value = point_type{a_ptr, v_ptr};
+        
+        if (found)
+            *here = new_value;
+        else 
+            here = fun.insert(new_value);
+
+        try{
+            set_maximum(here);
+
+            if(here != fun.begin()){
+                iterator left = here;
+                --left;
+                set_maximum(left);
+            }
+
+            if(here != fun.end()){
+                iterator right = here;
+                ++here;
+                set_maximum(right);
+            }
+        }
+        catch(...){
+            fun = fun_save;
+            maxima = maxima_save;
+            throw;
+        }
+            
+    }
+
+    // Usuwa a z dziedziny funkcji. Jeśli a nie należało do dziedziny funkcji,
+    // nie dzieje się nic. Złożoność najwyżej O(log n).
+    void erase(A const& a) {
+
+    }
 private:
     function_set fun;
     maxima_set maxima;
+
+    //Pomocnicze funkcje, określające czy
+    //w danym miejscu jest maximum lokalne
+    bool left_check(iterator it){
+        if(it == fun.begin()) return true;
+        iterator left = it; --left;
+        return !(it->value() < left->value()); //możliwy wyjątek w >
+    }
+    bool right_check(iterator it){
+        if(it == fun.end()) return true;
+        iterator right = it; ++right;
+        return !(it->value() < right->value()); //możliwy wyjątek w >
+    }
+
+    bool maximum_check(iterator it){
+        return left_check(it) && right_check(it); //dziedziczy wyjatki
+    }
+
+    //może miotać wyjątkami na prawo i lewo
+    void set_maximum(iterator it){
+        if (maximum_check(it)){
+            auto here = maxima.find(*it);
+            if (here == maxima.end())
+                maxima.insert(*it);
+            else
+                *here = *it;
+        }
+        else
+            maxima.erase(*it);
+    }
 };
 #endif //MAKSIMA_FUNCTION_MAXIMA_H
