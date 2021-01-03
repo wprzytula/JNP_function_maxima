@@ -1,6 +1,8 @@
 #ifndef MAKSIMA_FUNCTION_MAXIMA_H
 #define MAKSIMA_FUNCTION_MAXIMA_H
 
+//#include <type_traits>
+#include <iostream>
 
 //Zakładamy, że
 //        * klasy A i V mają konstruktory kopiujące;
@@ -27,6 +29,14 @@
 
 #include <utility>
 #include <set>
+#include <memory>
+
+class InvalidArg : std::exception {
+public:
+    [[nodiscard]] const char* what() const noexcept override {
+        return "invalid argument value";
+    }
+};
 
 template<typename A, typename V>
 class FunctionMaxima {
@@ -35,53 +45,56 @@ public:
     // point_type, ale zezwalamy na ich kopiowanie i przypisywanie.
     class point_type {
     private:
-        A _arg;
-        V _value;
-        explicit point_type(A arg, V value) : _arg(arg), _value(value) {}
+        std::shared_ptr<A> arg_ptr;
+        std::shared_ptr<V> value_ptr;
+        explicit point_type(A arg, V value)
+            : arg_ptr(std::make_shared(arg)), value_ptr(std::make_shared(value)) {}
+        explicit point_type(std::shared_ptr<A> arg, std::shared_ptr<V> value)
+            : arg_ptr(arg), value_ptr(value) {}
+        friend class FunctionMaxima;
+//        friend V const& FunctionMaxima::value_at(A const&);
     public:
         point_type(const point_type&) = default;
-        point_type(point_type&&) noexcept = default;
         point_type& operator= (const point_type&) = default;
-        point_type& operator= (point_type&&) noexcept = default;
         // Zwraca argument funkcji.
-        A const& arg() const {
-            return _arg;
+        A const& arg() const noexcept {
+            return *arg_ptr;
         }
         // Zwraca wartość funkcji w tym punkcie.
-        V const& value() const {
-            return _value;
+        V const& value() const noexcept {
+            return *value_ptr;
         }
         // Zadaje porządek liniowy na point_type identyczny z porządkiem na argumentach.
-        bool operator< (point_type const& other) {
-            return _arg < other._arg;
+        bool operator<(point_type const& other) const {
+            return *arg_ptr < *other.arg_ptr;
         }
     };
 
     using function_set = std::set<point_type, std::less<point_type>>;
 
     struct maxima_order {
-        bool operator() (const point_type& x, const point_type& y) const {
-            return x.value() > y.value() || (!(y.value() < x.value()) && x.arg() < y.arg());
+        bool operator()(const point_type& x, const point_type& y) const {
+            return *x.value() > *y.value() || (!(*y.value() < *x.value()) && *x.arg() < *y.arg());
         }
     };
 
     using maxima_set = std::set<point_type, maxima_order>;
-
-    class InvalidArg : std::exception {};
 
     // Konstruktor bezparametrowy (tworzy funkcję o pustej dziedzinie),
     //  konstruktor kopiujący i operator=. Dwa ostatnie powinny mieć
     //  sensowne działanie.
     FunctionMaxima() = default;
     FunctionMaxima(const FunctionMaxima&) = default;
-    FunctionMaxima(FunctionMaxima&&) noexcept = default;
     FunctionMaxima& operator=(const FunctionMaxima&) = default;
-    FunctionMaxima& operator=(FunctionMaxima&&) noexcept = default;
 
     // Zwraca wartość w punkcie a, rzuca wyjątek InvalidArg, jeśli a nie
     // należy do dziedziny funkcji. Złożoność najwyżej O(log n).
     V const& value_at(A const& a) const {
-
+        iterator it = find(a);
+        if (it == fun.end())
+            throw InvalidArg();
+        else
+            return it->value();
     }
 
     // Zmienia funkcję tak, żeby zachodziło f(a) = v. Jeśli a nie należy do
@@ -115,8 +128,9 @@ public:
 
     // Iterator, który wskazuje na punkt funkcji o argumencie a lub end(),
     // jeśli takiego argumentu nie ma w dziedzinie funkcji.
-    iterator find(A const& a) const noexcept {
-        return fun.find(a);
+    iterator find(A const& a) const {
+        std::shared_ptr<A> a_ptr = std::make_shared<A>(static_cast<A>(a));
+        return fun.find(point_type{a_ptr, std::shared_ptr<V>{}});
     }
 
     // Typ mx_iterator zachowujący się znów jak bidirectional_iterator,
@@ -153,8 +167,7 @@ public:
         return fun.size();
     }
 private:
-    function_set fun; // proponuję tu trzymać elementy stosując komparator argumentu
-    maxima_set maxima; // tu zaś stosujemy komparator odwrotnie leksykograficzny,
-                       // począwszy od drugiej współrzędnej
+    function_set fun;
+    maxima_set maxima;
 };
 #endif //MAKSIMA_FUNCTION_MAXIMA_H

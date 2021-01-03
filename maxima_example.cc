@@ -46,6 +46,7 @@ bool fun_mx_equal(const FunctionMaxima<A, V> &F,
 
 int main() {
   FunctionMaxima<int, int> fun;
+  fun.find(0);
   fun.set_value(0, 1);
   assert(fun_equal(fun, {{0, 1}}));
   assert(fun_mx_equal(fun, {{0, 1}}));
