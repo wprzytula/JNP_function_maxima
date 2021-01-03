@@ -25,6 +25,7 @@
 #include <utility>
 #include <set>
 #include <memory>
+#include <cassert>
 
 class InvalidArg : std::exception {
 public:
@@ -67,7 +68,7 @@ public:
 
     using function_set = std::set<point_type, std::less<point_type>>;
 
-    struct maxima_order {
+    struct maxima_order { // TODO: czy możemy używać operatora > ?
         bool operator()(const point_type& x, const point_type& y) const {
             return *x.value() > *y.value() || (!(*y.value() < *x.value()) && *x.arg() < *y.arg());
         }
@@ -75,7 +76,7 @@ public:
 
     using maxima_set = std::set<point_type, maxima_order>;
 
-    //    Typ iterator zachowujący się tak jak bidirectional_iterator
+//    Typ iterator zachowujący się tak jak bidirectional_iterator
 //    (http://www.cplusplus.com/reference/iterator/BidirectionalIterator),
 //            iterujący po punktach funkcji.
 //    Dla zmiennej it typu wyrażenie *it powinno być typu point_type const&.
@@ -84,12 +85,12 @@ public:
 //    Metody dające dostęp do punktów funkcji:
     // iterator wskazujący na pierwszy punkt
     iterator begin() const noexcept {
-        return fun.begin();
+        return fun.cbegin();
     }
 
     // iterator wskazujący za ostatni punkt
     iterator end() const noexcept {
-        return fun.end();
+        return fun.cend();
     }
 
     // Iterator, który wskazuje na punkt funkcji o argumencie a lub end(),
@@ -107,12 +108,12 @@ public:
 
     // iterator wskazujący na pierwsze lokalne maksimum
     mx_iterator mx_begin() const noexcept {
-        return maxima.begin();
+        return maxima.cbegin();
     }
 
     // iterator wskazujący za ostatnie lokalne maksimum
     mx_iterator mx_end() const noexcept {
-        return maxima.end();
+        return maxima.cend();
     }
 
 //    Jeśli przez k oznaczymy rozmiar zbioru lokalnych maksimów, to powyższe
@@ -203,6 +204,8 @@ private:
     function_set fun;
     maxima_set maxima;
 
+
+    // nie moje wersje ~Wojciech
     //Pomocnicze funkcje, określające czy
     //w danym miejscu jest maximum lokalne
     bool left_check(iterator it){
@@ -231,6 +234,34 @@ private:
         }
         else
             maxima.erase(*it);
+    }
+
+
+    // Moje wersje ~Wojciech
+    bool left_check(iterator it, iterator to_erase) {
+        if (it == fun.begin())
+            return true;
+        iterator left = it; --left;
+        if (left == to_erase) {
+            if (left == fun.begin())
+                return true;
+            else
+                --left;
+        }
+        return !(it->value() < left->value()); //możliwy wyjątek w <
+    }
+    bool right_check(iterator it, iterator to_erase) {
+        iterator right = it; ++right;
+        if (right == fun.end())
+            return true;
+        if (right == to_erase) {
+            if (++right == fun.end())
+                return true;
+        }
+        return !(it->value() < right->value()); //możliwy wyjątek w <
+    }
+    bool is_maximum(iterator it, iterator to_erase = nullptr) {
+        return left_check(it, to_erase) && right_check(it, to_erase);
     }
 };
 #endif //MAKSIMA_FUNCTION_MAXIMA_H
