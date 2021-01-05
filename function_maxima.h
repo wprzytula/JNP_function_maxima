@@ -286,7 +286,7 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
         }
         if (right_exist){
             max_position_r = maxima.find(*right); 
-            was_maximum_l = max_position_r != maxima.cend();
+            was_maximum_r = max_position_r != maxima.cend();
         }
     }
     catch(...){
