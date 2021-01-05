@@ -229,7 +229,7 @@ struct FunctionMaxima<A, V>::range_order {
         return x < *y.lock();
     }
     bool operator()(const std::weak_ptr<V> x, const V& y) const {
-        assert(!x.expired());
+        assert (!x.expired());
         return *x.lock() < y;
     }
 };
@@ -264,10 +264,16 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     bool val_ins_true = val_ins.second;
     
     //f(a) = v
-    if (found)
-        it->replace_value(v_ptr); 
-    else
-        it = fun.insert(point_type{a_ptr, v_ptr}).first;
+    try {
+        if (found)
+            it->replace_value(v_ptr);
+        else
+            it = fun.insert(point_type{a_ptr, v_ptr}).first;
+    } catch(...) {
+        if(val_ins_true)
+            range.erase(new_val_it);
+        throw;
+    }
 
     iterator left = fun.cend(), right = fun.cend();
     bool left_exist = it != fun.cbegin();
@@ -429,15 +435,21 @@ void FunctionMaxima<A, V>::erase(A const& a) {
                 iterator left = std::prev(to_erase);
                 if (is_maximum(left, to_erase))
                     left_mx = maxima.insert(*left).first;
-                else
-                    should_erase_left_mx = true;
+                else {
+                    left_mx = maxima.find(*left);
+                    if (left_mx != mx_end())
+                        should_erase_left_mx = true;
+                }
             }
             iterator right = std::next(to_erase);
             if (right != end()) {
                 if (is_maximum(right, to_erase))
                     right_mx = maxima.insert(*right).first;
-                else
-                    should_erase_right_mx = true;
+                else {
+                    right_mx = maxima.find(*right);
+                    if (right_mx != mx_end())
+                        should_erase_right_mx = true;
+                }
             }
         } catch (...) {
             if (left_mx != mx_end()) {
