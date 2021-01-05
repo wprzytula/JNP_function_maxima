@@ -6,6 +6,9 @@
 #include <memory>
 #include <cassert>
 
+//TODO: remove this:
+#include <iostream>
+
 //#include<iostream>
 
 class InvalidArg : std::exception {
@@ -210,7 +213,7 @@ struct FunctionMaxima<A, V>::argument_order {
 template <typename A, typename V>
 struct FunctionMaxima<A, V>::maxima_order {
     bool operator()(const point_type& x, const point_type& y) const {
-        return y.value() < x.value() || (!(y.value() < x.value()) && x.arg() < y.arg());
+        return y.value() < x.value() || (!(x.value() < y.value()) && x.arg() < y.arg());
     }
 };
 
@@ -274,8 +277,8 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     if(right_exist) right = std::next(it);
 
     bool will_be_max = maximum_check(it);
-    bool will_be_max_l = left_exist ? right_checker(left) : false;
-    bool will_be_max_r = right_exist ? left_checker(right) : false;
+    bool will_be_max_l = left_exist ? maximum_check(left) : false;
+    bool will_be_max_r = right_exist ? maximum_check(right) : false;
 
     
     mx_iterator max_position_r = maxima.cend();
@@ -442,6 +445,7 @@ void FunctionMaxima<A, V>::erase(A const& a) {
                 if (right_mx != mx_end())
                     maxima.erase(right_mx);
             }
+            throw;
         }
         if (mx_it != mx_end())
             maxima.erase(mx_it);
@@ -452,7 +456,6 @@ void FunctionMaxima<A, V>::erase(A const& a) {
             maxima.erase(left_mx);
         if (should_erase_right_mx)
             maxima.erase(right_mx);
-        throw;
     }
 }
 #endif //MAKSIMA_FUNCTION_MAXIMA_H
