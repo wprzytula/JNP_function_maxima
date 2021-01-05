@@ -6,6 +6,8 @@
 #include <memory>
 #include <cassert>
 
+//#include<iostream>
+
 class InvalidArg : std::exception {
 public:
     [[nodiscard]] const char* what() const noexcept override {
@@ -376,6 +378,9 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
         //cofanie głównego
         if(should_be_inserted && done)
             maxima.erase(inserted);
+
+        if (will_be_max && was_maximum)
+            max_position->replace_value(v_ptr_old->lock());
 
         //przywracanie wartości
         if (found)
