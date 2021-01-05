@@ -1,15 +1,10 @@
-#ifndef MAKSIMA_FUNCTION_MAXIMA_H
-#define MAKSIMA_FUNCTION_MAXIMA_H
+#ifndef FUNCTION_MAXIMA_H
+#define FUNCTION_MAXIMA_H
 
 #include <utility>
 #include <set>
 #include <memory>
 #include <cassert>
-
-//TODO: remove this:
-#include <iostream>
-
-//#include<iostream>
 
 class InvalidArg : std::exception {
 public:
@@ -21,17 +16,21 @@ public:
 template<typename A, typename V>
 class FunctionMaxima {
 public:
-    // Nie powinno być możliwe bezpośrednie konstruowanie obiektów typu
-    // point_type, ale zezwalamy na ich kopiowanie i przypisywanie.
     class point_type {
     private:
         std::shared_ptr<A> arg_ptr;
+        // To jest mutable celem umożliwienia modyfikacji poprzez replace_value
+        // będąc wewnątrz zbioru (czyli będąc const).
         mutable std::shared_ptr<V> value_ptr;
-        explicit point_type(A arg, V value)
-            : arg_ptr(std::make_shared(arg)), value_ptr(std::make_shared(value)) {}
-        // https://stackoverflow.com/a/17369971
+        // TODO: do usunięcia?
+//        explicit point_type(A arg, V value)
+//            : arg_ptr(std::make_shared(arg)), value_ptr(std::make_shared(value)) {}
+        // Przekazanie shared_ptr do konstruktora poprzez wartość,
+        // zgodnie z https://stackoverflow.com/a/17369971.
         explicit point_type(const std::shared_ptr<A> arg, const std::shared_ptr<V> value)
             : arg_ptr(arg), value_ptr(value) {}
+        // Modyfikuje wartość wewnątrz point_type oznaczonego jako const;
+        // wykorzystywane do zmiany wewnątrz zbioru.
         void replace_value(const std::shared_ptr<V>& new_value) const {
             value_ptr = new_value;
         }
@@ -39,7 +38,7 @@ public:
     public:
         point_type(const point_type&) = default;
         point_type& operator=(const point_type&) = default;
-        // Zwraca a rgument funkcji.
+        // Zwraca argument funkcji.
         A const& arg() const noexcept {
             return *arg_ptr;
         }
@@ -53,38 +52,42 @@ public:
         }
     };
 private:
+    // Funktor umożliwiający porównania obiektów wewnątrz zbioru reprezentującego
+    // dziedzinę funkcji wraz z przypisanymi argumentom wartościami.
     struct argument_order;
     using function_set = std::set<point_type, argument_order>;
 
+    // Funktor umożliwiający porównania obiektów wewnątrz zbioru maksimów.
     struct maxima_order;
     using maxima_set = std::set<point_type, maxima_order>;
 
+    // Funktor umożliwiający porównania obiektów wewnątrz zbioru wartości.
     struct range_order;
     using range_set = std::set<std::weak_ptr<V>, range_order>;
     using rg_iterator = typename range_set::const_iterator;
 
+    // Iterator wskazujący za największą wartość.
     rg_iterator rg_end() const noexcept {
         return range.cend();
     }
 
+    // Iterator, który wskazuje na zadaną wartość lub rg_end(),
+    // jeśli funkcja nie przyjmuje takiej wartości dla żadnego argumentu.
     rg_iterator rg_find(V const& v) const {
         return range.find(v);
     }
 
 public:
-//    Typ iterator zachowujący się tak jak bidirectional_iterator
-//    (http://www.cplusplus.com/reference/iterator/BidirectionalIterator),
-//            iterujący po punktach funkcji.
-//    Dla zmiennej it typu wyrażenie *it powinno być typu point_type const&.
+    // Typ iterator zachowujący się jak bidirectional_iterator,
+    // iterujący po po punktach funkcji.
     using iterator = typename function_set::const_iterator;
 
-//    Metody dające dostęp do punktów funkcji:
-    // iterator wskazujący na pierwszy punkt
+    // Iterator wskazujący na pierwszy punkt.
     iterator begin() const noexcept {
         return fun.cbegin();
     }
 
-    // iterator wskazujący za ostatni punkt
+    // Iterator wskazujący za ostatni punkt.
     iterator end() const noexcept {
         return fun.cend();
     }
@@ -97,35 +100,31 @@ public:
 
     // Typ mx_iterator zachowujący się znów jak bidirectional_iterator,
     // iterujący po lokalnych maksimach funkcji.
-    // Dla zmiennej it typu wyrażenie *it powinno być typu point_type const&.
     using mx_iterator = typename maxima_set::const_iterator;
 
-    // iterator wskazujący na pierwsze lokalne maksimum
+    // Iterator wskazujący na pierwsze lokalne maksimum.
     mx_iterator mx_begin() const noexcept {
         return maxima.cbegin();
     }
 
-    // iterator wskazujący za ostatnie lokalne maksimum
+    // Iterator wskazujący za ostatnie lokalne maksimum.
     mx_iterator mx_end() const noexcept {
         return maxima.cend();
     }
 
-//    Typ size_type reprezentujący rozmiar dziedziny i funkcja zwracająca ten rozmiar:
+    // Typ size_type reprezentujący rozmiar dziedziny i funkcja zwracająca ten rozmiar:
     using size_type = typename function_set::size_type;
 
     size_type size() const noexcept {
         return fun.size();
     }
 
-    // Konstruktor bezparametrowy (tworzy funkcję o pustej dziedzinie),
-    //  konstruktor kopiujący i operator=. Dwa ostatnie powinny mieć
-    //  sensowne działanie.
     FunctionMaxima() = default;
     FunctionMaxima(const FunctionMaxima&) = default;
     FunctionMaxima& operator=(const FunctionMaxima&) = default;
 
     // Zwraca wartość w punkcie a, rzuca wyjątek InvalidArg, jeśli a nie
-    // należy do dziedziny funkcji. Złożoność najwyżej O(log n).
+    // należy do dziedziny funkcji.
     V const& value_at(A const& a) const {
         iterator it = find(a);
         if (it == fun.end())
@@ -135,11 +134,11 @@ public:
     }
 
     // Zmienia funkcję tak, żeby zachodziło f(a) = v. Jeśli a nie należy do
-    // obecnej dziedziny funkcji, jest do niej dodawany. Najwyżej O(log n).
+    // obecnej dziedziny funkcji, jest do niej dodawany.
     void set_value(A const& a, V const& v);
 
     // Usuwa a z dziedziny funkcji. Jeśli a nie należało do dziedziny funkcji,
-    // nie dzieje się nic. Złożoność najwyżej O(log n).
+    // nie dzieje się nic.
     void erase(const A&);
 
 private:
@@ -149,7 +148,7 @@ private:
 
     // nie moje wersje ~Wojciech
     //Pomocnicze funkcje, określające czy
-    //w danym miejscu jest maximum lokalne
+    //w danym miejscu jest maksimum lokalne
     bool left_checker(iterator it){
         if (it == fun.cbegin()) return true;
         iterator left = std::prev(it);
@@ -194,10 +193,9 @@ private:
     }
 };
 
-// dzięki temu, a konkretnie dwóm ostatnim przeładowaniom, unikamy make_shared w find!!!
 template <typename A, typename V>
 struct FunctionMaxima<A, V>::argument_order {
-    // trick z Afryki (https://www.fluentcpp.com/2017/06/09/search-set-another-type-key/) :
+    // https://www.fluentcpp.com/2017/06/09/search-set-another-type-key
     using is_transparent = void;
     bool operator()(const point_type& x, const point_type& y) const {
         return x < y;
@@ -417,7 +415,6 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     //usuwanie ze zbioru wartości
     if (found && v_ptr_old->expired())
             range.erase(v_ptr_old);
-
 }
 
 template <typename A, typename V>
@@ -429,7 +426,7 @@ void FunctionMaxima<A, V>::erase(A const& a) {
         mx_iterator left_mx = mx_end(), right_mx = mx_end();
         mx_iterator mx_it = maxima.find(*to_erase);
         try {
-            if (rg_it == rg_end()) // for debug only
+            if (rg_it == rg_end())
                 assert(false);
             if (to_erase != begin()) {
                 iterator left = std::prev(to_erase);
@@ -470,4 +467,4 @@ void FunctionMaxima<A, V>::erase(A const& a) {
             maxima.erase(right_mx);
     }
 }
-#endif //MAKSIMA_FUNCTION_MAXIMA_H
+#endif // FUNCTION_MAXIMA_H
