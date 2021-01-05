@@ -105,6 +105,12 @@ public:
         return maxima.cend();
     }
 
+private:
+    mx_iterator mx_find(const point_type& pt) const {
+        return maxima.find(pt);
+    }
+    
+public:
 //    Typ size_type reprezentujący rozmiar dziedziny i funkcja zwracająca ten rozmiar:
     using size_type = typename function_set::size_type;
 
@@ -156,7 +162,8 @@ private:
         return !(it->value() < right->value()); //możliwy wyjątek w >
     }
 
-    bool maximum_check(iterator it){
+    bool maximum_check(iterator it) {
+        if (it == end()) return false;
         return left_checker(it) && right_checker(it); //dziedziczy wyjatki
     }
 
@@ -231,71 +238,75 @@ struct FunctionMaxima<A, V>::range_order {
 
 template <typename A, typename V>
 void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
-    iterator it = find(a);
-    //v = stara wartosc
-    if (it != fun.cend() && !(it->value() < v) 
-        && !(v < it->value())) return ;
+    iterator arg_it = find(a);
+    if (arg_it != end()) {
+        if (!(arg_it->value() < v) && !(v < arg_it->value()))
+            return; // Odpowiednia para jest już reprezentowana przez funkcję.
+    }
 
-    rg_iterator v_ptr_old = rg_find(it->value());
+    rg_iterator v_ptr_old = rg_find(arg_it->value());
     rg_iterator new_val_it = rg_find(v);
-    bool new_value = new_val_it != rg_end();
+    bool val_was_present = new_val_it != rg_end();
 
-    bool found = it != fun.end();
-    mx_iterator max_position = maxima.cend();
-    mx_iterator max_position_r = maxima.cend();
-    mx_iterator max_position_l = maxima.cend();
+    bool arg_was_present = arg_it != end();
 
-    std::shared_ptr<A> a_ptr = found
-            ? it->arg_ptr
+    std::shared_ptr<A> a_ptr = arg_was_present
+            ? arg_it->arg_ptr
             : std::make_shared<A>(static_cast<A>(a));
-    std::shared_ptr<V> v_ptr = new_value
+    std::shared_ptr<V> v_ptr = val_was_present
             ? new_val_it->lock()
             : std::make_shared<V>(static_cast<V>(v));
 
-    auto val_ins = range.insert(v_ptr);
-    new_val_it = val_ins.first;
-    bool val_ins_true = val_ins.second;
-    
+    bool val_ins_happened;
+    {
+        auto val_ins = range.insert(v_ptr);
+        new_val_it = val_ins.first;
+        val_ins_happened = val_ins.second;
+    }
 
-    //f(a) = v
-    if (found)
-        it->replace_value(v_ptr); 
+    // f(a) = v
+    if (arg_was_present)
+        arg_it->replace_value(v_ptr);
     else
-        it = fun.insert(point_type{a_ptr, v_ptr}).first;
+        arg_it = fun.insert({a_ptr, v_ptr}).first;
 
-    max_position = maxima.find(*it);
+    mx_iterator max_pos = maxima.find(*arg_it);
+    mx_iterator max_pos_r = mx_end();
+    mx_iterator max_pos_l = mx_end();
 
-    bool was_maximum = max_position != mx_end();
+    bool was_maximum = max_pos != mx_end();
     bool was_maximum_l = false, was_maximum_r = false;
 
-    iterator left = fun.cend(), right = fun.cend();
-    bool left_exist = it != fun.cbegin();
-    bool right_exist = std::next(it) != fun.cend();
+    iterator left = end(), right = end();
+    bool left_exist = arg_it != begin();
+    bool right_exist = std::next(arg_it) != end();
 
-    if(left_exist) left = std::prev(it);
-    if(right_exist) right = std::next(it);
+    if (left_exist)
+        left = std::prev(arg_it);
+    if (right_exist)
+        right = std::next(arg_it);
 
-    bool will_be_max = maximum_check(it);
+    bool will_be_max = maximum_check(arg_it);
     bool will_be_max_l = left_exist ? false : right_checker(left);
     bool will_be_max_r = right_exist ? false : left_checker(right);
 
-    try{
-        if (left_exist){
-            max_position_l = maxima.find(*left);
-            was_maximum_l = max_position_l != maxima.cend();
+    try {
+        if (left_exist) {
+            max_pos_l = maxima.find(*left);
+            was_maximum_l = max_pos_l != maxima.cend();
         }
-        if (right_exist){
-            max_position_r = maxima.find(*right); 
-            was_maximum_r = max_position_r != maxima.cend();
+        if (right_exist) {
+            max_pos_r = maxima.find(*right);
+            was_maximum_r = max_pos_r != maxima.cend();
         }
     }
     catch(...){
-        if (found)
-            it->replace_value(v_ptr_old->lock());
+        if (arg_was_present)
+            arg_it->replace_value(v_ptr_old->lock());
         else
-            fun.erase(it);
+            fun.erase(arg_it);
 
-        if(val_ins_true)
+        if(val_ins_happened)
             range.erase(new_val_it);
         throw;
     }
@@ -311,7 +322,7 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
 
     if (will_be_max){
         if (was_maximum)
-            max_position->replace_value(v_ptr);
+            max_pos->replace_value(v_ptr);
         else
             should_be_inserted = true;}
     else if (was_maximum)
@@ -342,7 +353,7 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     //insercje maximów
     try {//aktualizowanie głównego
         if(should_be_inserted){
-            inserted = maxima.insert(*it).first;
+            inserted = maxima.insert(*arg_it).first;
             done = true;
         }    
         try{//aktualizowanie lewego
@@ -376,31 +387,31 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
             maxima.erase(inserted);
 
         //przywracanie wartości
-        if (found)
-            it->replace_value(v_ptr_old->lock());
+        if (arg_was_present)
+            arg_it->replace_value(v_ptr_old->lock());
         else
-            fun.erase(it);
+            fun.erase(arg_it);
 
         if (will_be_max && was_maximum)
-            max_position->replace_value(v_ptr_old->lock());
+            max_pos->replace_value(v_ptr_old->lock());
 
-        if(val_ins_true)
+        if(val_ins_happened)
             range.erase(new_val_it);
 
         throw;
     }
 
     //erasy maximow
-    if(should_be_erased)
-        maxima.erase(max_position);
-    if(should_be_erased_l)
-        maxima.erase(max_position_l);
-    if(should_be_erased_r)
-        maxima.erase(max_position_r);
+    if (should_be_erased)
+        maxima.erase(max_pos);
+    if (should_be_erased_l)
+        maxima.erase(max_pos_l);
+    if (should_be_erased_r)
+        maxima.erase(max_pos_r);
 
     //usuwanie ze zbioru wartości
     if (v_ptr_old->expired())
-            range.erase(v_ptr_old);
+        range.erase(v_ptr_old);
 
 }
 
