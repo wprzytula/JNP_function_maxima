@@ -235,6 +235,9 @@ template <typename A, typename V>
 void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     iterator it = find(a);
     bool found = it != fun.cend();
+    mx_iterator max_position = maxima.cend();
+    if(found)
+        max_position = maxima.find(*it);
     //v = stara wartosc
     if (found && !(it->value() < v) 
         && !(v < it->value())) return ;
@@ -274,16 +277,13 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     bool will_be_max_l = left_exist ? right_checker(left) : false;
     bool will_be_max_r = right_exist ? left_checker(right) : false;
 
-    mx_iterator max_position = maxima.cend();
+    
     mx_iterator max_position_r = maxima.cend();
     mx_iterator max_position_l = maxima.cend();
-    bool was_maximum = false;
+    bool was_maximum = max_position != mx_end();
     bool was_maximum_l = false, was_maximum_r = false;
 
     try{
-        max_position = maxima.find(*it);
-        was_maximum = max_position != mx_end();
-
         if (left_exist){
             max_position_l = maxima.find(*left);
             was_maximum_l = max_position_l != maxima.cend();
