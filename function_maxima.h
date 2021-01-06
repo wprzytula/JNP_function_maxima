@@ -8,7 +8,7 @@
 
 class InvalidArg : std::exception {
 public:
-    [[nodiscard]] const char* what() const noexcept override {
+    [[nodiscard]] char const* what() const noexcept override {
         return "invalid argument value";
     }
 };
@@ -27,17 +27,17 @@ public:
 //            : arg_ptr(std::make_shared(arg)), value_ptr(std::make_shared(value)) {}
         // Przekazanie shared_ptr do konstruktora poprzez wartość,
         // zgodnie z https://stackoverflow.com/a/17369971.
-        explicit point_type(const std::shared_ptr<A> arg, const std::shared_ptr<V> value)
+        explicit point_type(std::shared_ptr<A> const arg, std::shared_ptr<V> const value)
             : arg_ptr(arg), value_ptr(value) {}
         // Modyfikuje wartość wewnątrz point_type oznaczonego jako const;
         // wykorzystywane do zmiany wewnątrz zbioru.
-        void replace_value(const std::shared_ptr<V>& new_value) const {
+        void replace_value(std::shared_ptr<V> const& new_value) const {
             value_ptr = new_value;
         }
         friend class FunctionMaxima;
     public:
-        point_type(const point_type&) = default;
-        point_type& operator=(const point_type&) = default;
+        point_type(point_type const&) = default;
+        point_type& operator=(point_type const&) = default;
         // Zwraca argument funkcji.
         A const& arg() const noexcept {
             return *arg_ptr;
@@ -65,17 +65,6 @@ private:
     struct range_order;
     using range_set = std::set<std::weak_ptr<V>, range_order>;
     using rg_iterator = typename range_set::const_iterator;
-
-    // Iterator wskazujący za największą wartość.
-    rg_iterator rg_end() const noexcept {
-        return range.cend();
-    }
-
-    // Iterator, który wskazuje na zadaną wartość lub rg_end(),
-    // jeśli funkcja nie przyjmuje takiej wartości dla żadnego argumentu.
-    rg_iterator rg_find(V const& v) const {
-        return range.find(v);
-    }
 
 public:
     // Typ iterator zachowujący się jak bidirectional_iterator,
@@ -111,7 +100,25 @@ public:
     mx_iterator mx_end() const noexcept {
         return maxima.cend();
     }
+private:
+    // Iterator, który wskazuje na maksimum funkcji w zadanym punkcie lub end(),
+    // jeśli dany punkt nie jest lokalnym maksimum funkcji.
+    mx_iterator mx_find(point_type const& pt) const {
+        return maxima.find(pt);
+    }
 
+    // Iterator wskazujący za największą wartość funkcji.
+    rg_iterator rg_end() const noexcept {
+        return range.cend();
+    }
+
+    // Iterator, który wskazuje na zadaną wartość funkcji lub rg_end(),
+    // jeśli funkcja nie przyjmuje takiej wartości dla żadnego argumentu.
+    rg_iterator rg_find(V const& v) const {
+        return range.find(v);
+    }
+
+public:
     // Typ size_type reprezentujący rozmiar dziedziny i funkcja zwracająca ten rozmiar:
     using size_type = typename function_set::size_type;
 
@@ -120,8 +127,8 @@ public:
     }
 
     FunctionMaxima() = default;
-    FunctionMaxima(const FunctionMaxima&) = default;
-    FunctionMaxima& operator=(const FunctionMaxima&) = default;
+    FunctionMaxima(FunctionMaxima const&) = default;
+    FunctionMaxima& operator=(FunctionMaxima const&) = default;
 
     // Zwraca wartość w punkcie a, rzuca wyjątek InvalidArg, jeśli a nie
     // należy do dziedziny funkcji.
@@ -133,13 +140,23 @@ public:
             return it->value();
     }
 
+private:
+    // Dodaje do funkcji punkt (a, v). Zakłada, że argument a
+    // nie należał przedtem do dziedziny funkcji.
+    void add_value(A const& a, V const& v);
+
+    // Zmienia poprzednią wartość funkcji dla argumentu a na v.
+    // Zakłada, że argument a należał już przedtem do dziedziny funkcji.
+    void modify_value(A const& a, V const& v);
+
+public:
     // Zmienia funkcję tak, żeby zachodziło f(a) = v. Jeśli a nie należy do
     // obecnej dziedziny funkcji, jest do niej dodawany.
     void set_value(A const& a, V const& v);
 
     // Usuwa a z dziedziny funkcji. Jeśli a nie należało do dziedziny funkcji,
     // nie dzieje się nic.
-    void erase(const A&);
+    void erase(A const&);
 
 private:
     function_set fun;
@@ -197,48 +214,59 @@ template <typename A, typename V>
 struct FunctionMaxima<A, V>::argument_order {
     // https://www.fluentcpp.com/2017/06/09/search-set-another-type-key
     using is_transparent = void;
-    bool operator()(const point_type& x, const point_type& y) const {
+    bool operator()(point_type const& x, point_type const& y) const {
         return x < y;
     }
-    bool operator()(const point_type& x, const A& y) const {
+    bool operator()(point_type const& x, A const& y) const {
         return *x.arg_ptr < y;
     }
-    bool operator()(const A& x, const point_type& y) const {
+    bool operator()(A const& x, point_type const& y) const {
         return x < *y.arg_ptr;
     }
 };
 
 template <typename A, typename V>
 struct FunctionMaxima<A, V>::maxima_order {
-    bool operator()(const point_type& x, const point_type& y) const {
-        return y.value() < x.value() || (!(x.value() < y.value()) && x.arg() < y.arg());
+    bool operator()(point_type const& x, point_type const& y) const {
+        return y.value() < x.value() ||
+        (!(x.value() < y.value()) && !(y.value() < x.value()) && x.arg() < y.arg());
     }
 };
 
 template <typename A, typename V>
 struct FunctionMaxima<A, V>::range_order {
     using is_transparent = void;
-    bool operator()(const std::weak_ptr<V> x, const std::weak_ptr<V> y) const {
+    bool operator()(std::weak_ptr<V> const x, std::weak_ptr<V> const y) const {
         assert(!x.expired() && !y.expired());
         return *x.lock() < *y.lock();
     }
-    bool operator()(const V& x, const std::weak_ptr<V> y) const {
+    bool operator()(V const& x, std::weak_ptr<V> const y) const {
         assert(!y.expired());
         return x < *y.lock();
     }
-    bool operator()(const std::weak_ptr<V> x, const V& y) const {
+    bool operator()(std::weak_ptr<V> const x, V const& y) const {
         assert (!x.expired());
         return *x.lock() < y;
     }
 };
 
+template<typename A, typename V>
+void FunctionMaxima<A, V>::add_value(A const& a, V const& v) {
+
+}
+
+template<typename A, typename V>
+void FunctionMaxima<A, V>::modify_value(A const& a, V const& v) {
+
+}
+
 template <typename A, typename V>
 void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     iterator it = find(a);
-    bool found = it != fun.cend();
-    mx_iterator max_position = maxima.cend();
+    bool found = it != end();
+    mx_iterator max_position = mx_end();
     if(found)
-        max_position = maxima.find(*it);
+        max_position = mx_find(*it);
     //v = stara wartosc
     if (found && !(it->value() < v) 
         && !(v < it->value())) return ;
@@ -273,9 +301,9 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
         throw;
     }
 
-    iterator left = fun.cend(), right = fun.cend();
-    bool left_exist = it != fun.cbegin();
-    bool right_exist = std::next(it) != fun.cend();
+    iterator left = end(), right = end();
+    bool left_exist = it != begin();
+    bool right_exist = std::next(it) != end();
     
     if(left_exist) left = std::prev(it);
     if(right_exist) right = std::next(it);
@@ -285,19 +313,19 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     bool will_be_max_r = right_exist ? maximum_check(right) : false;
 
     
-    mx_iterator max_position_r = maxima.cend();
-    mx_iterator max_position_l = maxima.cend();
+    mx_iterator max_position_r = mx_end();
+    mx_iterator max_position_l = mx_end();
     bool was_maximum = max_position != mx_end();
     bool was_maximum_l = false, was_maximum_r = false;
 
     try{
         if (left_exist){
-            max_position_l = maxima.find(*left);
-            was_maximum_l = max_position_l != maxima.cend();
+            max_position_l = mx_find(*left);
+            was_maximum_l = max_position_l != mx_end();
         }
         if (right_exist){
-            max_position_r = maxima.find(*right); 
-            was_maximum_r = max_position_r != maxima.cend();
+            max_position_r = mx_find(*right);
+            was_maximum_r = max_position_r != mx_end();
         }
     }
     catch(...){
@@ -370,14 +398,14 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
             catch(...){
                 //cofanie prawego
                  if(should_be_inserted_r && done_r)
-                    maxima.erase(inserted_r);
+                     maxima.erase(inserted_r);
                 throw;
             }
         }
         catch(...)
         {   //cofanie lewego
             if(should_be_inserted_l && done_l)
-            maxima.erase(inserted_l);
+                maxima.erase(inserted_l);
             throw;
         }
     }
@@ -467,4 +495,5 @@ void FunctionMaxima<A, V>::erase(A const& a) {
             maxima.erase(right_mx);
     }
 }
+
 #endif // FUNCTION_MAXIMA_H
