@@ -158,6 +158,24 @@ public:
     // nie dzieje się nic.
     void erase(A const&);
 
+    void print() const noexcept {
+        std::cout << "\nfun: ";
+        for (iterator it = begin(); it != end(); ++it) {
+            std::cout << it->arg() << " -> " << it->value() << ", ";
+        }
+        std::cout << '\n';
+        std::cout << "maxima: ";
+        for (mx_iterator it = mx_begin(); it != mx_end(); ++it) {
+            std::cout << it->arg() << " -> " << it->value() << ", ";
+        }
+        std::cout << '\n';
+        std::cout << "range: ";
+        for (rg_iterator it = range.cbegin(); it != rg_end(); ++it) {
+            std::cout << *it->lock() << ", ";
+        }
+        std::cout << '\n';
+    }
+
 private:
     function_set fun;
     maxima_set maxima;
@@ -317,7 +335,7 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
         if (found)
             it->replace_value(v_ptr);
         else
-            it = fun.emplace(a_ptr, v_ptr).first;
+            it = fun.insert(point_type{a_ptr, v_ptr}).first;
     } catch (...) {
         if (val_ins_happened)
             range.erase(new_val_it);
