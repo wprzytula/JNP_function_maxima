@@ -141,13 +141,13 @@ public:
     }
 
 private:
-    // Dodaje do funkcji punkt (a, v). Zakłada, że argument a
+    /*// Dodaje do funkcji punkt (a, v). Zakłada, że argument a
     // nie należał przedtem do dziedziny funkcji.
     void add_value(A const& a, V const& v);
 
     // Zmienia poprzednią wartość funkcji dla argumentu a na v.
     // Zakłada, że argument a należał już przedtem do dziedziny funkcji.
-    void modify_value(A const& a, V const& v);
+    void modify_value(A const& a, V const& v);*/
 
 public:
     // Zmienia funkcję tak, żeby zachodziło f(a) = v. Jeśli a nie należy do
@@ -163,50 +163,10 @@ private:
     maxima_set maxima;
     range_set range;
 
-    // nie moje wersje ~Wojciech
-    //Pomocnicze funkcje, określające czy
-    //w danym miejscu jest maksimum lokalne
-    bool left_checker(iterator it){
-        if (it == fun.cbegin()) return true;
-        iterator left = std::prev(it);
-        return !(it->value() < left->value()); //możliwy wyjątek w >
-    }
-    bool right_checker(iterator it){
-        iterator right = std::next(it);
-        if (right == fun.cend()) return true;
-        return !(it->value() < right->value()); //możliwy wyjątek w >
-    }
-
-    bool maximum_check(iterator it){
-        return left_checker(it) && right_checker(it); //dziedziczy wyjatki
-    }
-
-
-    // Moje wersje ~Wojciech
-    bool left_check(iterator it, iterator to_erase) const {
-        if (it == fun.begin())
-            return true;
-        iterator left = std::prev(it);
-        if (left == to_erase) {
-            if (left == fun.begin())
-                return true;
-            else
-                --left;
-        }
-        return !(it->value() < left->value()); //możliwy wyjątek w <
-    }
-    bool right_check(iterator it, iterator to_erase) const {
-        iterator right = std::next(it);
-        if (right == fun.end())
-            return true;
-        if (right == to_erase) {
-            if (++right == fun.end())
-                return true;
-        }
-        return !(it->value() < right->value()); //możliwy wyjątek w <
-    }
-    bool is_maximum(iterator it, iterator to_erase = nullptr) const {
-        return left_check(it, to_erase) && right_check(it, to_erase);
+    bool left_max_check(iterator it, iterator to_erase) const;
+    bool right_max_check(iterator it, iterator to_erase) const;
+    bool is_maximum(iterator it, iterator to_erase) const {
+        return left_max_check(it, to_erase) && right_max_check(it, to_erase);
     }
 };
 
@@ -250,7 +210,7 @@ struct FunctionMaxima<A, V>::range_order {
     }
 };
 
-template<typename A, typename V>
+/*template<typename A, typename V>
 void FunctionMaxima<A, V>::add_value(A const& a, V const& v) {
 
 }
@@ -258,24 +218,24 @@ void FunctionMaxima<A, V>::add_value(A const& a, V const& v) {
 template<typename A, typename V>
 void FunctionMaxima<A, V>::modify_value(A const& a, V const& v) {
 
-}
+}*/
 
 template <typename elem_type, typename set_type>
 class InsertionGuard {
 private:
     using iterator = typename set_type::const_iterator;
-    bool revert;
     set_type& set;
-    iterator it;
     elem_type& element;
+    bool revert, perform;
+    iterator it;
 public:
-    InsertionGuard(set_type& set, elem_type& element)
-        : revert(true), set(set), element(element) {
-//        it = set.insert(static_cast<std::remove_reference_t<decltype(element)>>(element)).first;
-        it = set.insert(element).first;
+    InsertionGuard(set_type& set, elem_type& element, bool perform)
+        : set(set), element(element), revert(true), perform(perform) {
+        if (perform)
+            it = set.insert(element).first;
     }
     ~InsertionGuard() noexcept {
-        if (revert)
+        if (perform && revert)
             set.erase(it);
     }
     void done() noexcept {
@@ -286,179 +246,91 @@ public:
 template <typename A, typename V>
 void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     iterator it = find(a);
-    bool found = it != end();
-    mx_iterator max_pos = mx_end();
-    if (found)
-        max_pos = mx_find(*it);
-    //v = stara wartosc
-    if (found && !(it->value() < v) 
-        && !(v < it->value())) return ;
+    bool arg_was_present = it != end();
+    mx_iterator max_pos = arg_was_present ? mx_find(*it) : mx_end();
+
+    if (arg_was_present && !(it->value() < v)
+        && !(v < it->value()))
+        return; // Danemu argumentowi jest już przypisana dana wartość.
 
     rg_iterator new_val_it = rg_find(v);
-    bool value_was_present = new_val_it != rg_end();
+    bool val_was_present = new_val_it != rg_end();
     
-    rg_iterator v_ptr_old = rg_end();
-    if (found)
-        v_ptr_old = rg_find(it->value());
+    rg_iterator old_val_it = arg_was_present ? rg_find(it->value()) : rg_end();
 
-    std::shared_ptr<A> a_ptr = found
+    std::shared_ptr<A> a_ptr = arg_was_present
             ? it->arg_ptr
             : std::make_shared<A>(static_cast<A>(a));
-    std::shared_ptr<V> v_ptr = value_was_present
+    std::shared_ptr<V> v_ptr = val_was_present
             ? new_val_it->lock()
             : std::make_shared<V>(static_cast<V>(v));
 
-    auto val_ins = range.insert(v_ptr);
-    new_val_it = val_ins.first;
-    bool val_ins_happened = val_ins.second;
+    InsertionGuard value_guard {range, v_ptr, !val_was_present};
     
-    //f(a) = v
-    try {
-        if (found)
-            it->replace_value(v_ptr);
-        else
-            it = fun.emplace(a_ptr, v_ptr).first;
-    } catch (...) {
-        if (val_ins_happened)
-            range.erase(new_val_it);
-        throw;
-    }
+    // f(a) = v
+    if (arg_was_present)
+        it->replace_value(v_ptr);
+    else
+        it = fun.insert(point_type{a_ptr, v_ptr}).first;
 
-    iterator left = end(), right = end();
-    bool left_exist = it != begin();
-    bool right_exist = std::next(it) != end();
-    
-    if (left_exist)
-        left = std::prev(it);
-    if (right_exist)
-        right = std::next(it);
+    // Ustalenia będące no-throw.
+    bool left_arg_exist = it != begin();
+    bool right_arg_exist = std::next(it) != end();
+    iterator left = left_arg_exist ? std::prev(it) : end();
+    iterator right = right_arg_exist ? std::next(it) : end();
 
-    bool will_be_max = maximum_check(it);
-    bool will_be_max_l = left_exist ? maximum_check(left) : false;
-    bool will_be_max_r = right_exist ? maximum_check(right) : false;
-
+    bool will_be_max = is_maximum(it, end());
+    bool will_be_max_l = left_arg_exist ? is_maximum(left, end()) : false;
+    bool will_be_max_r = right_arg_exist ? is_maximum(right, end()) : false;
     
     mx_iterator max_pos_r = mx_end();
     mx_iterator max_pos_l = mx_end();
-    bool was_maximum = max_pos != mx_end();
-    bool was_maximum_l = false, was_maximum_r = false;
+    bool was_max = max_pos != mx_end();
+    bool was_max_l = false, was_max_r = false, should_be_erased_l, should_be_erased_r;
 
     try {
-        if (left_exist) {
+        if (left_arg_exist) {
             max_pos_l = mx_find(*left);
-            was_maximum_l = max_pos_l != mx_end();
+            was_max_l = max_pos_l != mx_end();
         }
-        if (right_exist) {
+        if (right_arg_exist) {
             max_pos_r = mx_find(*right);
-            was_maximum_r = max_pos_r != mx_end();
+            was_max_r = max_pos_r != mx_end();
         }
-    }
-    catch (...) {
-        if (found)
-            it->replace_value(v_ptr_old->lock());
+        should_be_erased_l = left_arg_exist && !will_be_max_l && was_max_l;
+        should_be_erased_r = right_arg_exist && !will_be_max_r && was_max_r;
+        bool should_be_inserted_l = left_arg_exist && will_be_max_l && !was_max_l;
+        bool should_be_inserted_r = right_arg_exist && will_be_max_r && !was_max_r;
+
+        // Insercje maximów.
+        InsertionGuard max_guard {maxima, *it, will_be_max};
+        InsertionGuard max_l_guard {maxima, *left, should_be_inserted_l};
+        InsertionGuard max_r_guard {maxima, *right, should_be_inserted_r};
+
+        max_guard.done();
+        max_l_guard.done();
+        max_r_guard.done();
+        value_guard.done();
+    } catch (...) {
+        // Przywracanie poprzedniej wartości.
+        if (arg_was_present)
+            it->replace_value(old_val_it->lock());
         else
             fun.erase(it);
-
-        if (val_ins_happened)
-            range.erase(new_val_it);
-        throw;
-    }
-    
-    //określanie co ma się zdarzyć
-    bool should_be_erased = false;
-    bool should_be_erased_l = false;
-    bool should_be_erased_r = false;
-
-    bool should_be_inserted = false;
-    bool should_be_inserted_l = false;
-    bool should_be_inserted_r = false;
-
-    if (will_be_max)
-        should_be_inserted = true;
-    if (was_maximum)
-        should_be_erased = true;
-
-    if (left_exist) {
-        if (will_be_max_l && !was_maximum_l)
-            should_be_inserted_l = true;
-        else if (!will_be_max_l && was_maximum_l)
-            should_be_erased_l = true;
-    }
-    if (right_exist) {
-        if (will_be_max_r && !was_maximum_r)
-            should_be_inserted_r = true;
-        else if (!will_be_max_r && was_maximum_r)
-            should_be_erased_r = true;
-    }
-
-    //iteratory do bezpiecznego cofania insercji
-    mx_iterator inserted = mx_end();
-    mx_iterator inserted_l = mx_end();
-    mx_iterator inserted_r = mx_end();
-
-    bool done = false;
-    bool done_l = false;
-    bool done_r = false;
-                
-    //insercje maximów
-    try {//aktualizowanie głównego
-        if (should_be_inserted) {
-            inserted = maxima.insert(*it).first;
-            done = true;
-        }    
-        try {//aktualizowanie lewego
-            if (should_be_inserted_l) {
-                inserted_l = maxima.insert(*left).first;
-                done_l = true;
-            }  
-            try {//aktualizowanie prawego
-                if (should_be_inserted_r) {
-                    inserted_r = maxima.insert(*right).first;
-                    done_r = true;
-                }  
-            }
-            catch (...) {
-                //cofanie prawego
-                if (should_be_inserted_r && done_r)
-                     maxima.erase(inserted_r);
-                throw;
-            }
-        }
-        catch (...)
-        {   //cofanie lewego
-            if (should_be_inserted_l && done_l)
-                maxima.erase(inserted_l);
-            throw;
-        }
-    }
-    catch (...) {
-        //cofanie głównego
-        if (should_be_inserted && done)
-            maxima.erase(inserted);
-
-        //przywracanie wartości
-        if (found)
-            it->replace_value(v_ptr_old->lock());
-        else
-            fun.erase(it);
-
-        if (val_ins_happened)
-            range.erase(new_val_it);
-
         throw;
     }
 
-    //erasy maximow
-    if (should_be_erased)
+    // Usunięcia nieaktualnych maksimów.
+    if (was_max)
         maxima.erase(max_pos);
     if (should_be_erased_l)
         maxima.erase(max_pos_l);
     if (should_be_erased_r)
         maxima.erase(max_pos_r);
 
-    //usuwanie ze zbioru wartości
-    if (found && v_ptr_old->expired())
-        range.erase(v_ptr_old);
+    // Usunięcie starej wartości ze zbioru wartości.
+    if (arg_was_present && old_val_it->expired())
+        range.erase(old_val_it);
 }
 
 template <typename A, typename V>
@@ -473,21 +345,21 @@ void FunctionMaxima<A, V>::erase(A const& a) {
             if (rg_it == rg_end())
                 assert(false);
             if (to_erase != begin()) {
-                iterator left = std::prev(to_erase);
-                if (is_maximum(left, to_erase))
-                    left_mx = maxima.insert(*left).first;
+                iterator left_arg = std::prev(to_erase);
+                if (is_maximum(left_arg, to_erase))
+                    left_mx = maxima.insert(*left_arg).first;
                 else {
-                    left_mx = maxima.find(*left);
+                    left_mx = maxima.find(*left_arg);
                     if (left_mx != mx_end())
                         should_erase_left_mx = true;
                 }
             }
-            iterator right = std::next(to_erase);
-            if (right != end()) {
-                if (is_maximum(right, to_erase))
-                    right_mx = maxima.insert(*right).first;
+            iterator right_arg = std::next(to_erase);
+            if (right_arg != end()) {
+                if (is_maximum(right_arg, to_erase))
+                    right_mx = maxima.insert(*right_arg).first;
                 else {
-                    right_mx = maxima.find(*right);
+                    right_mx = maxima.find(*right_arg);
                     if (right_mx != mx_end())
                         should_erase_right_mx = true;
                 }
@@ -503,13 +375,39 @@ void FunctionMaxima<A, V>::erase(A const& a) {
         if (mx_it != mx_end())
             maxima.erase(mx_it);
         fun.erase(to_erase);
-        if (rg_it->expired())
-            range.erase(rg_it);
         if (should_erase_left_mx)
             maxima.erase(left_mx);
         if (should_erase_right_mx)
             maxima.erase(right_mx);
+        if (rg_it->expired())
+            range.erase(rg_it);
     }
+}
+
+template<typename A, typename V>
+bool FunctionMaxima<A, V>::left_max_check(iterator it, iterator to_erase) const {
+    if (it == begin())
+        return true;
+    iterator left = std::prev(it);
+    if (left == to_erase) {
+        if (left == begin())
+            return true;
+        else
+            --left;
+    }
+    return !(it->value() < left->value());
+}
+
+template<typename A, typename V>
+bool FunctionMaxima<A, V>::right_max_check(iterator it, iterator to_erase) const {
+    iterator right = std::next(it);
+    if (right == end())
+        return true;
+    if (right == to_erase) {
+        if (++right == end())
+            return true;
+    }
+    return !(it->value() < right->value());
 }
 
 #endif // FUNCTION_MAXIMA_H
