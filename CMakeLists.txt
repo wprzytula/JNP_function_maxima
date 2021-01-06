@@ -11,7 +11,7 @@ add_executable(maksima
     )
 
 add_executable(ciebiera
-        tests/function_maxima.h
+        function_maxima.h
         tests/wyjatkowy_int.cpp
 )
 

@@ -22,12 +22,9 @@ public:
         // To jest mutable celem umożliwienia modyfikacji poprzez replace_value
         // będąc wewnątrz zbioru (czyli będąc const).
         mutable std::shared_ptr<V> value_ptr;
-        // TODO: do usunięcia?
-//        explicit point_type(A arg, V value)
-//            : arg_ptr(std::make_shared(arg)), value_ptr(std::make_shared(value)) {}
         // Przekazanie shared_ptr do konstruktora poprzez wartość,
         // zgodnie z https://stackoverflow.com/a/17369971.
-        explicit point_type(std::shared_ptr<A> const arg, std::shared_ptr<V> const value)
+        explicit point_type(std::shared_ptr<A> arg, std::shared_ptr<V> value)
             : arg_ptr(arg), value_ptr(value) {}
         // Modyfikuje wartość wewnątrz point_type oznaczonego jako const;
         // wykorzystywane do zmiany wewnątrz zbioru.
@@ -140,16 +137,6 @@ public:
             return it->value();
     }
 
-private:
-    /*// Dodaje do funkcji punkt (a, v). Zakłada, że argument a
-    // nie należał przedtem do dziedziny funkcji.
-    void add_value(A const& a, V const& v);
-
-    // Zmienia poprzednią wartość funkcji dla argumentu a na v.
-    // Zakłada, że argument a należał już przedtem do dziedziny funkcji.
-    void modify_value(A const& a, V const& v);*/
-
-public:
     // Zmienia funkcję tak, żeby zachodziło f(a) = v. Jeśli a nie należy do
     // obecnej dziedziny funkcji, jest do niej dodawany.
     void set_value(A const& a, V const& v);
@@ -167,6 +154,26 @@ private:
     bool right_max_check(iterator it, iterator to_erase) const;
     bool is_maximum(iterator it, iterator to_erase) const {
         return left_max_check(it, to_erase) && right_max_check(it, to_erase);
+    }
+
+    //TODO: delete
+public:
+    void print() const noexcept {
+        std::cout << "\nfun: ";
+        for (iterator it = begin(); it != end(); ++it) {
+            std::cout << it->arg() << " -> " << it->value() << ", ";
+        }
+        std::cout << '\n';
+        std::cout << "maxima: ";
+        for (mx_iterator it = mx_begin(); it != mx_end(); ++it) {
+            std::cout << it->arg() << " -> " << it->value() << ", ";
+        }
+        std::cout << '\n';
+        std::cout << "range: ";
+        for (rg_iterator it = range.cbegin(); it != rg_end(); ++it) {
+            std::cout << *it->lock() << ", ";
+        }
+        std::cout << '\n';
     }
 };
 
@@ -209,16 +216,6 @@ struct FunctionMaxima<A, V>::range_order {
         return *x.lock() < y;
     }
 };
-
-/*template<typename A, typename V>
-void FunctionMaxima<A, V>::add_value(A const& a, V const& v) {
-
-}
-
-template<typename A, typename V>
-void FunctionMaxima<A, V>::modify_value(A const& a, V const& v) {
-
-}*/
 
 template <typename elem_type, typename set_type>
 class InsertionGuard {
@@ -342,8 +339,10 @@ void FunctionMaxima<A, V>::erase(A const& a) {
         mx_iterator left_mx = mx_end(), right_mx = mx_end();
         mx_iterator mx_it = maxima.find(*to_erase);
         try {
-            if (rg_it == rg_end())
+            if (rg_it == rg_end()) {
+                print();
                 assert(false);
+            }
             if (to_erase != begin()) {
                 iterator left_arg = std::prev(to_erase);
                 if (is_maximum(left_arg, to_erase))
