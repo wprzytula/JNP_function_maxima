@@ -275,7 +275,7 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     bool new_value = new_val_it != rg_end();
     
     rg_iterator v_ptr_old = rg_end();
-    if(found)
+    if (found)
         v_ptr_old = rg_find(it->value());
 
     std::shared_ptr<A> a_ptr = found
@@ -295,8 +295,8 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
             it->replace_value(v_ptr);
         else
             it = fun.insert(point_type{a_ptr, v_ptr}).first;
-    } catch(...) {
-        if(val_ins_true)
+    } catch (...) {
+        if (val_ins_true)
             range.erase(new_val_it);
         throw;
     }
@@ -305,8 +305,8 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     bool left_exist = it != begin();
     bool right_exist = std::next(it) != end();
     
-    if(left_exist) left = std::prev(it);
-    if(right_exist) right = std::next(it);
+    if (left_exist) left = std::prev(it);
+    if (right_exist) right = std::next(it);
 
     bool will_be_max = maximum_check(it);
     bool will_be_max_l = left_exist ? maximum_check(left) : false;
@@ -318,7 +318,7 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     bool was_maximum = max_position != mx_end();
     bool was_maximum_l = false, was_maximum_r = false;
 
-    try{
+    try {
         if (left_exist){
             max_position_l = mx_find(*left);
             was_maximum_l = max_position_l != mx_end();
@@ -328,13 +328,13 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
             was_maximum_r = max_position_r != mx_end();
         }
     }
-    catch(...){
+    catch (...){
         if (found)
             it->replace_value(v_ptr_old->lock());
         else
             fun.erase(it);
 
-        if(val_ins_true)
+        if (val_ins_true)
             range.erase(new_val_it);
         throw;
     }
@@ -356,13 +356,13 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     else if (was_maximum)
         should_be_erased = true;
 
-    if(left_exist){
+    if (left_exist){
         if (will_be_max_l && !was_maximum_l)
             should_be_inserted_l = true;
         else if (!will_be_max_l && was_maximum_l)
             should_be_erased_l = true;
     }
-    if(right_exist){
+    if (right_exist){
         if (will_be_max_r && !was_maximum_r)
             should_be_inserted_r = true;
         else if (!will_be_max_r && was_maximum_r)
@@ -380,38 +380,38 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
                 
     //insercje maximów
     try {//aktualizowanie głównego
-        if(should_be_inserted){
+        if (should_be_inserted) {
             inserted = maxima.insert(*it).first;
             done = true;
         }    
-        try{//aktualizowanie lewego
-            if(should_be_inserted_l){
+        try {//aktualizowanie lewego
+            if (should_be_inserted_l) {
                 inserted_l = maxima.insert(*left).first;
                 done_l = true;
             }  
-            try{//aktualizowanie prawego
-                if(should_be_inserted_r){
+            try {//aktualizowanie prawego
+                if (should_be_inserted_r) {
                     inserted_r = maxima.insert(*right).first;
                     done_r = true;
                 }  
             }
-            catch(...){
+            catch (...) {
                 //cofanie prawego
-                 if(should_be_inserted_r && done_r)
+                if (should_be_inserted_r && done_r)
                      maxima.erase(inserted_r);
                 throw;
             }
         }
-        catch(...)
+        catch (...)
         {   //cofanie lewego
-            if(should_be_inserted_l && done_l)
+            if (should_be_inserted_l && done_l)
                 maxima.erase(inserted_l);
             throw;
         }
     }
     catch (...) {
         //cofanie głównego
-        if(should_be_inserted && done)
+        if (should_be_inserted && done)
             maxima.erase(inserted);
 
         if (will_be_max && was_maximum)
@@ -433,11 +433,11 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     }
 
     //erasy maximow
-    if(should_be_erased)
+    if (should_be_erased)
         maxima.erase(max_position);
-    if(should_be_erased_l)
+    if (should_be_erased_l)
         maxima.erase(max_position_l);
-    if(should_be_erased_r)
+    if (should_be_erased_r)
         maxima.erase(max_position_r);
 
     //usuwanie ze zbioru wartości
