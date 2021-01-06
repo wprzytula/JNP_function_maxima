@@ -348,14 +348,10 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     bool should_be_inserted_l = false;
     bool should_be_inserted_r = false;
 
-    //jeżeli było i będzie maksimum
-    //to mówi, by usunąć na koniec starą wartość
-    bool specific_erase =false;
-
     if (will_be_max){
         if (was_maximum){
             should_be_inserted = true;
-            specific_erase = true;
+            should_be_erased = true;
         }
         else
             should_be_inserted = true;}
@@ -420,9 +416,6 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
         if(should_be_inserted && done)
             maxima.erase(inserted);
 
-        if (will_be_max && was_maximum)
-            max_position->replace_value(v_ptr_old->lock());
-
         //przywracanie wartości
         if (found)
             it->replace_value(v_ptr_old->lock());
@@ -442,9 +435,6 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
         maxima.erase(max_position_l);
     if(should_be_erased_r)
         maxima.erase(max_position_r);
-
-    if(specific_erase)
-        maxima.erase(max_position);
 
     //usuwanie ze zbioru wartości
     if (found && v_ptr_old->expired())
