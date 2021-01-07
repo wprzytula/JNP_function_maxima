@@ -256,51 +256,51 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     std::shared_ptr<A> a_ptr = arg_was_present
             ? arg_pos->arg_ptr
             : std::make_shared<A>(static_cast<A>(a));
-    std::shared_ptr<V> v_ptr = val_was_present
+    std::shared_ptr<V> val_ptr = val_was_present
             ? new_val_pos->lock()
             : std::make_shared<V>(static_cast<V>(v));
     // Koniec fragmentu, który nie powoduje żadnych modyfikacji stanu.
 
-    detail::InsertionGuard value_guard{range, &v_ptr, !val_was_present};
+    detail::InsertionGuard value_guard{range, &val_ptr, !val_was_present};
     // f(a) = v
     if (arg_was_present)
-        arg_pos->replace_value(v_ptr);
+        arg_pos->replace_value(val_ptr);
     else
-        arg_pos = fun.insert(point_type{a_ptr, v_ptr}).first;
+        arg_pos = fun.insert(point_type{a_ptr, val_ptr}).first;
 
-    // Inicjalizacja będąca no-throw.
+    // Inicjalizacje będące no-throw.
     bool const left_arg_exist = arg_pos != begin();
     bool const right_arg_exist = std::next(arg_pos) != end();
     iterator left_arg = left_arg_exist ? std::prev(arg_pos) : end();
     iterator right_arg = right_arg_exist ? std::next(arg_pos) : end();
-    mx_iterator max_pos_r = mx_end();
-    mx_iterator max_pos_l = mx_end();
-    bool was_max = max_pos != mx_end(), was_max_l = false, was_max_r = false,
-         should_be_erased_l, should_be_erased_r;
+    mx_iterator right_mx_pos = mx_end();
+    mx_iterator left_mx_pos = mx_end();
+    bool was_mx = max_pos != mx_end(), was_left_mx = false, was_right_mx = false,
+         should_erase_left_mx, should_erase_right_mx;
 
     try {
-        bool const will_be_max = is_maximum(arg_pos, end());
-        bool const will_be_max_l = left_arg_exist ? is_maximum(left_arg, end()) : false;
-        bool const will_be_max_r = right_arg_exist ? is_maximum(right_arg, end()) : false;
+        bool const will_be_mx = is_maximum(arg_pos, end());
+        bool const will_be_left_mx = left_arg_exist ? is_maximum(left_arg, end()) : false;
+        bool const will_be_right_mx = right_arg_exist ? is_maximum(right_arg, end()) : false;
         if (left_arg_exist) {
-            max_pos_l = mx_find(*left_arg);
-            was_max_l = max_pos_l != mx_end();
+            left_mx_pos = mx_find(*left_arg);
+            was_left_mx = left_mx_pos != mx_end();
         }
         if (right_arg_exist) {
-            max_pos_r = mx_find(*right_arg);
-            was_max_r = max_pos_r != mx_end();
+            right_mx_pos = mx_find(*right_arg);
+            was_right_mx = right_mx_pos != mx_end();
         }
-        should_be_erased_l = left_arg_exist && !will_be_max_l && was_max_l;
-        should_be_erased_r = right_arg_exist && !will_be_max_r && was_max_r;
-        bool const should_be_inserted_l = left_arg_exist && will_be_max_l && !was_max_l;
-        bool const should_be_inserted_r = right_arg_exist && will_be_max_r && !was_max_r;
+        should_erase_left_mx = left_arg_exist && !will_be_left_mx && was_left_mx;
+        should_erase_right_mx = right_arg_exist && !will_be_right_mx && was_right_mx;
+        bool const should_insert_left_mx = left_arg_exist && will_be_left_mx && !was_left_mx;
+        bool const should_insert_right_mx = right_arg_exist && will_be_right_mx && !was_right_mx;
 
-        // Insercje maximów.
-        detail::InsertionGuard max_guard{maxima, &*arg_pos, will_be_max};
+        // Insercje maksimów.
+        detail::InsertionGuard max_guard{maxima, &*arg_pos, will_be_mx};
         detail::InsertionGuard max_l_guard{maxima, left_arg_exist ? &*left_arg : nullptr,
-                                   should_be_inserted_l};
+                                           should_insert_left_mx};
         detail::InsertionGuard max_r_guard{maxima, right_arg_exist ? &*right_arg : nullptr,
-                                   should_be_inserted_r};
+                                           should_insert_right_mx};
         max_guard.done();
         max_l_guard.done();
         max_r_guard.done();
@@ -315,12 +315,12 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
         throw;
     }
     // Usunięcia nieaktualnych maksimów.
-    if (was_max)
+    if (was_mx)
         maxima.erase(max_pos);
-    if (should_be_erased_l)
-        maxima.erase(max_pos_l);
-    if (should_be_erased_r)
-        maxima.erase(max_pos_r);
+    if (should_erase_left_mx)
+        maxima.erase(left_mx_pos);
+    if (should_erase_right_mx)
+        maxima.erase(right_mx_pos);
     // Usunięcie starej wartości ze zbioru wartości.
     old_val_handle.reset();
     if (arg_was_present && old_val_pos->expired())
@@ -329,49 +329,53 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
 
 template <typename A, typename V>
 void FunctionMaxima<A, V>::erase(A const& a) {
-    iterator to_erase = find(a);
-    if (to_erase != end()) {
-        rg_iterator rg_it = rg_find(to_erase->value());
-        if (rg_it == rg_end())
+    iterator arg_pos = find(a);
+    if (arg_pos != end()) {
+        rg_iterator val_pos = rg_find(arg_pos->value());
+        if (val_pos == rg_end())
             assert(false);
         mx_iterator left_mx = mx_end(), right_mx = mx_end();
-        mx_iterator mx_it = maxima.find(*to_erase);
-        bool const exists_l = to_erase != begin(), exists_r = std::next(to_erase) != end();
-        bool was_max_l = false, was_max_r = false, will_be_max_l = false, will_be_max_r = false;
-        bool should_insert_left_mx, should_insert_right_mx, should_erase_left_mx, should_erase_right_mx;
+        mx_iterator mx_it = maxima.find(*arg_pos);
+        bool const left_arg_exists = arg_pos != begin(),
+                   right_arg_exists = std::next(arg_pos) != end();
+        bool was_left_mx = false, was_right_mx = false, will_be_left_mx = false,
+             will_be_right_mx = false, should_insert_left_mx, should_insert_right_mx,
+             should_erase_left_mx, should_erase_right_mx;
         iterator left_arg, right_arg;
-        if (exists_l) {
-            left_arg = std::prev(to_erase);
+        if (left_arg_exists) {
+            left_arg = std::prev(arg_pos);
             left_mx = maxima.find(*left_arg);
-            was_max_l = left_mx != mx_end();
-            will_be_max_l = is_maximum(left_arg, to_erase);
+            was_left_mx = left_mx != mx_end();
+            will_be_left_mx = is_maximum(left_arg, arg_pos);
         }
-        if (exists_r) {
-            right_arg = std::next(to_erase);
+        if (right_arg_exists) {
+            right_arg = std::next(arg_pos);
             right_mx = maxima.find(*right_arg);
-            was_max_r = right_mx != mx_end();
-            will_be_max_r = is_maximum(right_arg, to_erase);
+            was_right_mx = right_mx != mx_end();
+            will_be_right_mx = is_maximum(right_arg, arg_pos);
         }
-        should_erase_left_mx = exists_l && was_max_l && !will_be_max_l;
-        should_erase_right_mx = exists_r && was_max_r && !will_be_max_r;
-        should_insert_left_mx = exists_l && !was_max_l && will_be_max_l;
-        should_insert_right_mx = exists_r && !was_max_r && will_be_max_r;
+        should_erase_left_mx = left_arg_exists && was_left_mx && !will_be_left_mx;
+        should_erase_right_mx = right_arg_exists && was_right_mx && !will_be_right_mx;
+        should_insert_left_mx = left_arg_exists && !was_left_mx && will_be_left_mx;
+        should_insert_right_mx = right_arg_exists && !was_right_mx && will_be_right_mx;
 
-        detail::InsertionGuard left_guard{maxima, exists_l ? &*left_arg : nullptr, should_insert_left_mx};
-        detail::InsertionGuard right_guard{maxima, exists_r ? &*right_arg : nullptr, should_insert_right_mx};
+        detail::InsertionGuard left_guard{maxima, left_arg_exists ? &*left_arg : nullptr,
+                                          should_insert_left_mx};
+        detail::InsertionGuard right_guard{maxima, right_arg_exists ? &*right_arg : nullptr,
+                                           should_insert_right_mx};
 
         left_guard.done();
         right_guard.done();
 
         if (mx_it != mx_end())
             maxima.erase(mx_it);
-        fun.erase(to_erase);
+        fun.erase(arg_pos);
         if (should_erase_left_mx)
             maxima.erase(left_mx);
         if (should_erase_right_mx)
             maxima.erase(right_mx);
-        if (rg_it->expired())
-            range.erase(rg_it);
+        if (val_pos->expired())
+            range.erase(val_pos);
     }
 }
 
