@@ -309,7 +309,7 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     } catch (...) {
         // Przywracanie poprzedniej wartości.
         if (arg_was_present)
-            arg_pos->replace_value(old_val_pos->lock());
+            arg_pos->replace_value(old_val_handle);
         else
             fun.erase(arg_pos);
         throw;
