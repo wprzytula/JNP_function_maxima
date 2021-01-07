@@ -48,6 +48,10 @@ public:
             return *arg_ptr < *other.arg_ptr;
         }
     };
+public:
+    FunctionMaxima() = default;
+    FunctionMaxima(FunctionMaxima const&) = default;
+    FunctionMaxima& operator=(FunctionMaxima const&) = default;
 private:
     // Funktor umożliwiający porównania obiektów wewnątrz zbioru reprezentującego
     // dziedzinę funkcji wraz z przypisanymi argumentom wartościami.
@@ -62,7 +66,6 @@ private:
     struct range_order;
     using range_set = std::set<std::weak_ptr<V>, range_order>;
     using rg_iterator = typename range_set::const_iterator;
-
 public:
     // Typ iterator zachowujący się jak bidirectional_iterator,
     // iterujący po po punktach funkcji.
@@ -114,7 +117,6 @@ private:
     rg_iterator rg_find(V const& v) const {
         return range.find(v);
     }
-
 public:
     // Typ size_type reprezentujący rozmiar dziedziny i funkcja zwracająca ten rozmiar:
     using size_type = typename function_set::size_type;
@@ -122,10 +124,6 @@ public:
     size_type size() const noexcept {
         return fun.size();
     }
-
-    FunctionMaxima() = default;
-    FunctionMaxima(FunctionMaxima const&) = default;
-    FunctionMaxima& operator=(FunctionMaxima const&) = default;
 
     // Zwraca wartość w punkcie a, rzuca wyjątek InvalidArg, jeśli a nie
     // należy do dziedziny funkcji.
@@ -144,7 +142,6 @@ public:
     // Usuwa a z dziedziny funkcji. Jeśli a nie należało do dziedziny funkcji,
     // nie dzieje się nic.
     void erase(A const&);
-
 private:
     function_set fun;
     maxima_set maxima;
@@ -257,6 +254,7 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     bool const val_was_present = new_val_pos != rg_end();
     
     rg_iterator old_val_pos = arg_was_present ? rg_find(arg_pos->value()) : rg_end();
+    auto old_val_handle = arg_was_present ? old_val_pos->lock() : std::shared_ptr<V>{};
 
     std::shared_ptr<A> a_ptr = arg_was_present
             ? arg_pos->arg_ptr
@@ -332,6 +330,7 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     if (should_be_erased_r)
         maxima.erase(max_pos_r);
     // Usunięcie starej wartości ze zbioru wartości.
+    old_val_handle.reset();
     if (arg_was_present && old_val_pos->expired())
         range.erase(old_val_pos);
 //    std::cout << "Successfully inserted\n"; }
