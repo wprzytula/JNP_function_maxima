@@ -82,15 +82,15 @@ public:
     FunctionMaxima& operator=(FunctionMaxima const&);
 private:
     // Funktor umożliwiający porównania obiektów wewnątrz zbioru reprezentującego
-    // dziedzinę funkcji wraz z przypisanymi argumentom wartościami.
+    // punkty należące do wykresu funkcji.
     struct argument_order;
     using function_set = std::set<point_type, argument_order>;
 
-    // Funktor umożliwiający porównania obiektów wewnątrz zbioru maksimów.
+    // Funktor umożliwiający porównania obiektów wewnątrz zbioru maksimów funkcji.
     struct maxima_order;
     using maxima_set = std::set<point_type, maxima_order>;
 
-    // Funktor umożliwiający porównania obiektów wewnątrz zbioru wartości.
+    // Funktor umożliwiający porównania obiektów wewnątrz zbioru wartości funkcji.
     struct range_order;
     using range_set = std::set<std::weak_ptr<V>, range_order>;
     using rg_iterator = typename range_set::const_iterator;
@@ -171,8 +171,12 @@ public:
     // nie dzieje się nic.
     void erase(A const&);
 private:
+    // Zbiór zawierający punkty funkcji, uporządkowany względem argumentów.
     function_set fun;
+    // Zbiór zawierający punkty funkcji będące jej lokalnymi maksimami,
+    // uporządkowany w sposób określony w wymogach zadania dla mx_iterator.
     maxima_set maxima;
+    // Zbiór zawierający wartości przyjmowane przez funkcję.
     range_set range;
 
     /* Poniższe funkcje przyjmują parametr to_erase wskazujący na punkt, którego przyszłe usunięcie
