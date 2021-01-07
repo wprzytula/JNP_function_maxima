@@ -156,7 +156,7 @@ private:
         return left_max_check(it, to_erase) && right_max_check(it, to_erase);
     }
 
-    //TODO: delete
+    /*//TODO: delete
 public:
     void print() const noexcept {
         std::cout << "fun: ";
@@ -174,7 +174,7 @@ public:
             std::cout << *it->lock() << ", ";
         }
         std::cout << '\n';
-    }
+    }*/
 };
 
 template <typename A, typename V>
@@ -244,8 +244,8 @@ public:
 template <typename A, typename V>
 void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     std::string part = "init";
-    try {
-        iterator arg_pos = find(a);
+//    try {
+    iterator arg_pos = find(a);
     bool const arg_was_present = arg_pos != end();
     mx_iterator max_pos = arg_was_present ? mx_find(*arg_pos) : mx_end();
 
@@ -266,6 +266,7 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
             : std::make_shared<V>(static_cast<V>(v));
 // Koniec fragmentu, który nie powodował żadnych modyfikacji stanu.
     part = "value insertion";
+    InsertionGuard value_guard{range, std::weak_ptr(v_ptr), !val_was_present};
     // f(a) = v
     if (arg_was_present)
         arg_pos->replace_value(v_ptr);
@@ -308,7 +309,6 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
             InsertionGuard max_guard{maxima, *arg_pos, will_be_max};
             InsertionGuard max_l_guard{maxima, *left_arg, should_be_inserted_l};
             InsertionGuard max_r_guard{maxima, *right_arg, should_be_inserted_r};
-            InsertionGuard value_guard{range, std::weak_ptr(v_ptr), !val_was_present};
 
             max_guard.done();
             max_l_guard.done();
@@ -334,10 +334,10 @@ void FunctionMaxima<A, V>::set_value(A const& a, V const& v) {
     // Usunięcie starej wartości ze zbioru wartości.
     if (arg_was_present && old_val_pos->expired())
         range.erase(old_val_pos);
-    std::cout << "Successfully inserted\n"; }
-    catch (...) {
-        std::cout << "Exception in part " << part << '\n';
-    }
+//    std::cout << "Successfully inserted\n"; }
+//    catch (...) {
+//        std::cout << "Exception in part " << part << '\n';
+//    }
 }
 
 template <typename A, typename V>
