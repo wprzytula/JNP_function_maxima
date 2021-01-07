@@ -3,7 +3,7 @@ project(maksima)
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(CMAKE_CXX_FLAGS "-Og -DTEST_NUM=205 -g -Wall -Wextra -std=c++17")
+set(CMAKE_CXX_FLAGS "-Og -DTEST_NUM=701 -g -Wall -Wextra -std=c++17")
 
 add_executable(maksima
     function_maxima.h
